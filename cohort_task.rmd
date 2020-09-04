@@ -1,0 +1,210 @@
+---
+title: "Cohort task"
+author: "Merint"
+date: "10/01/2019"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(cartography)
+library(MASS)
+library(ISLR)
+library(rgdal)
+library(dbplyr)
+library(DT)
+library(reshape2)
+library(RColorBrewer)
+```
+Preparing the Data for Cohort Analysis as per need. Here we have cosen to use only the User ID, Created Date, and Event from the given data for ease of analysis. We have used MS Exel's brilliant commands to differentiate the entries into different cohorts.
+
+```{r}
+Data<- Cohort_new[c("user_id","created_date","event","Cohort")]
+```
+
+As the Created Date is a mixture of Date and Time and as for our analysis we only need the month and Year, we split this column in order to obtain what we need.
+```{r}
+Data_date<- Data %>%
+  separate(created_date, sep="-", into = c("year", "month", "day"))
+```
+
+Now that we've splitted the Created_date column into 3 separate columns, we delete the day column as it is not of any use to us.
+```{r}
+Data_date<- subset(Data_date, select = -c(day))
+```
+
+We now join the Month and year as a single column for ease of functioning
+
+```{r}
+Data_date$Date<-paste(Data_date$year,Data_date$month)
+Data_date<- subset(Data_date, select = -c(year,month))
+```
+
+
+Here we now create a new column 'Month' to rename it to characters 
+```{r}
+for(i in 1:59915){
+  if(Data_date$Date[i]=="2018 06"){
+    Data_date$Month[i]<-"June 18"
+  }
+  if(Data_date$Date[i]=="2018 07"){
+    Data_date$Month[i]<-"July 18"
+  }
+  if(Data_date$Date[i]=="2018 08"){
+    Data_date$Month[i]<-"August 18"
+  }
+  if(Data_date$Date[i]=="2018 09"){
+    Data_date$Month[i]<-"September 18"
+  }
+  if(Data_date$Date[i]=="2018 10"){
+    Data_date$Month[i]<-"October 18"
+  }
+  if(Data_date$Date[i]=="2018 11"){
+    Data_date$Month[i]<-"November 18"
+  }
+  if(Data_date$Date[i]=="2018 12"){
+    Data_date$Month[i]<-"December 18"
+  }
+  if(Data_date$Date[i]=="2019 01"){
+    Data_date$Month[i]<-"January 19"
+  }
+  if(Data_date$Date[i]=="2019 02"){
+    Data_date$Month[i]<-"February 19"
+  }
+  if(Data_date$Date[i]=="2019 03"){
+    Data_date$Month[i]<-"March 19"
+  }
+  if(Data_date$Date[i]=="2019 04"){
+    Data_date$Month[i]<-"April 19"
+  }
+  if(Data_date$Date[i]=="2019 05"){
+    Data_date$Month[i]<-"May 19"
+  }
+  if(Data_date$Date[i]=="2019 06"){
+    Data_date$Month[i]<-"June 19"
+  }
+  if(Data_date$Date[i]=="2019 07"){
+    Data_date$Month[i]<-"July 19"
+  }
+  if(Data_date$Date[i]=="2019 08"){
+    Data_date$Month[i]<-"August 19"
+  }
+}
+```
+
+
+```{r}
+Final_data<-Data_date
+```
+
+We follow the same procedure as above for the Cohort dates as well and only keep the month and year
+```{r}
+Final_data<- Final_data %>%
+  separate(Cohort, sep="-", into = c("year", "month", "day"))
+Final_data<- subset(Final_data, select = -c(day))
+Final_data$Cohort_date<-paste(Final_data$year,Final_data$month)
+Final_data<- subset(Final_data, select = -c(year,month))
+```
+
+
+Again, this is the renaming step for better undrstanding
+```{r}
+Final_data$Cohorts<-0
+for(i in 1:59915){
+  if(Final_data$Cohort_date[i]=="2018 06"){
+    Final_data$Cohorts[i]<-"Cohort 2018 06"
+  }
+  if(Final_data$Cohort_date[i]=="2018 07"){
+    Final_data$Cohorts[i]<-"Cohort 2018 07"
+  }
+  if(Final_data$Cohort_date[i]=="2018 08"){
+    Final_data$Cohorts[i]<-"Cohort 2018 08"
+  }
+  if(Final_data$Cohort_date[i]=="2018 09"){
+    Final_data$Cohorts[i]<-"Cohort 2018 09"
+  }
+  if(Final_data$Cohort_date[i]=="2018 10"){
+    Final_data$Cohorts[i]<-"Cohort 2018 10"
+  }
+  if(Final_data$Cohort_date[i]=="2018 11"){
+    Final_data$Cohorts[i]<-"Cohort 2018 11"
+  }
+  if(Final_data$Cohort_date[i]=="2019 02"){
+    Final_data$Cohorts[i]<-"Cohort 2019 02"
+  }
+  if(Final_data$Cohort_date[i]=="2019 03"){
+    Final_data$Cohorts[i]<-"Cohort 2019 03"
+  }
+  if(Final_data$Cohort_date[i]=="2019 05"){
+    Final_data$Cohorts[i]<-"Cohort 2019 05"
+  }
+  if(Final_data$Cohort_date[i]=="2019 06"){
+    Final_data$Cohorts[i]<-"Cohort 2019 06"
+  }
+}
+```
+
+
+Here we group the data by the created cohorts
+```{r}
+Cohort<- group_by(Final_data,Cohorts)
+summarise(Cohort, count=n())
+```
+
+In this step, we identify the duplicate entries i.e the similar entries in the same month. 
+```{r}
+dupes <- which(duplicated(Cohort[,]))
+```
+
+Here we eliminate the duplicate entries from our data
+```{r}
+cohorts_final <- Cohort[-dupes,]
+```
+
+Here we create our table for cohorts data
+```{r}
+cohorts.wide <- reshape2::dcast(cohorts_final,Cohorts~Date,
+                                value.var="user_id",
+                                fun.aggregate = length)
+```
+
+
+Let's be more creative here!
+```{r}
+cw.retention <- cohorts.wide
+cw.churn <- cohorts.wide
+
+breaks <- quantile(cohorts.wide[,2:16], probs = seq(.05, .95, .05), na.rm = TRUE)
+colors <- sapply(round(seq(120, 80, length.out = length(breaks) + 1), 0),
+                 function(x){ rgb(x,x,155, maxColorValue = 155) } )
+
+
+DT::datatable(cohorts.wide,
+              class = 'cell-border stripe',
+             rownames = FALSE,
+             options = list(
+               ordering=T,
+               dom = 't',
+               pageLength = 20) ) %>%
+             formatStyle("2018 06",
+                         backgroundColor = 'lightgrey',
+                         fontWeight = 'bold') %>%
+  formatStyle(names(cohorts.wide[c(-1,-2)]),fontWeight = 'bold',color = 'white', backgroundColor = styleInterval(breaks,colors))
+```
+
+
+
+Now let's plot a layer-cake-graph for a better view and understanding
+```{r}
+cohort.chart <- melt(cohorts.wide, id.vars = "Cohorts")
+colnames(cohort.chart) <- c('cohort', 'month', 'user_activity')
+
+Colurs <- colorRampPalette(c('lightblue', 'lightgreen','black','yellow','red','pink','darkgreen', 'darkblue'))
+```
+
+```{r}
+p <- ggplot(cohort.chart, aes(x=month, y=user_activity, group=cohort))
+p + geom_area(aes(fill = cohort)) +
+ scale_fill_manual(values = Colurs(nrow(cohorts.wide))) +
+ ggtitle('Total User Activity by Cohort')
+```
